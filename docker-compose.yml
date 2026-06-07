@@ -1,0 +1,65 @@
+version: '3.9'
+
+services:
+  # PostgreSQL (optional — uses SQLite by default for dev)
+  postgres:
+    image: postgres:15-alpine
+    container_name: ndlovukazi_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ndlovukazi
+      POSTGRES_USER: ndlovukazi
+      POSTGRES_PASSWORD: ndlovukazi_dev
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ndlovukazi']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ndlovukazi_api
+    restart: unless-stopped
+    ports:
+      - '5000:5000'
+    environment:
+      NODE_ENV: development
+      DATABASE_PROVIDER: postgresql
+      DATABASE_URL: postgresql://ndlovukazi:ndlovukazi_dev@postgres:5432/ndlovukazi
+      JWT_SECRET: dev_jwt_secret_change_in_production
+      FRONTEND_URL: http://localhost:5173
+      PORT: 5000
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: npm run dev
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: ndlovukazi_frontend
+    restart: unless-stopped
+    ports:
+      - '5173:5173'
+    environment:
+      VITE_API_URL: http://localhost:5000/api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  uploads_data:
