@@ -7,18 +7,21 @@ const { sendFlagNotification } = require('../services/email');
 
 // ── List jobs ─────────────────────────────────────────────
 router.get('/', optionalAuth, async (req, res) => {
-  const { page = 1, limit = 20, category, jobType, region, search, sort = 'newest' } = req.query;
+  const { page = 1, limit = 20, category, jobType, region, search, sort = 'newest', fresh } = req.query;
   const skip = (Number(page) - 1) * Number(limit);
 
   const cacheKey = `jobs:${JSON.stringify(req.query)}`;
   const cached = cache.get(cacheKey);
   if (cached) return res.json(cached);
 
+  const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+
   const where = {
     expired: false,
     ...(category && { category }),
     ...(jobType && { jobType }),
     ...(region && region !== 'Worldwide' && { location: { contains: region } }),
+    ...(fresh === 'true' && { postedAt: { gte: fortyEightHoursAgo } }),
     ...(search && {
       OR: [
         { title: { contains: search, mode: 'insensitive' } },
@@ -53,7 +56,6 @@ router.get('/:id', optionalAuth, async (req, res) => {
   const job = await prisma.job.findUnique({ where: { id: req.params.id } });
   if (!job || job.expired) return res.status(404).json({ error: 'Job not found' });
 
-  // Increment view counter
   prisma.job.update({ where: { id: job.id }, data: { views: { increment: 1 } } }).catch(() => {});
 
   let isSaved = false;
@@ -106,24 +108,7 @@ router.post('/:id/cover-letter', auth, async (req, res) => {
   }
 
   try {
-    const prompt = `Write a professional cover letter (300-400 words) for the following job:
-
-Job Title: ${job.title}
-Company: ${job.company}
-Location: ${job.location}
-Description: ${job.description?.slice(0, 1000)}
-
-Applicant Name: ${userName || 'the applicant'}
-Background: ${userBackground || 'an experienced professional'}
-
-Guidelines:
-- Professional, warm, and confident tone
-- Reference the company by name
-- Highlight relevant skills
-- End with a clear call to action
-- Do NOT use placeholder brackets
-
-Write only the cover letter, no extra commentary.`;
+    const prompt = `Write a professional cover letter (300-400 words) for the following job:\n\nJob Title: ${job.title}\nCompany: ${job.company}\nLocation: ${job.location}\nDescription: ${job.description?.slice(0, 1000)}\n\nApplicant Name: ${userName || 'the applicant'}\nBackground: ${userBackground || 'an experienced professional'}\n\nGuidelines:\n- Professional, warm, and confident tone\n- Reference the company by name\n- Highlight relevant skills\n- End with a clear call to action\n- Do NOT use placeholder brackets\n\nWrite only the cover letter, no extra commentary.`;
 
     const { data } = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
@@ -142,22 +127,7 @@ Write only the cover letter, no extra commentary.`;
 });
 
 function fallbackTemplate(job, name) {
-  return `Dear Hiring Manager at ${job.company},
-
-I am writing to express my strong interest in the ${job.title} position at ${job.company}. Having reviewed the role requirements, I am confident that my skills and experience make me an excellent candidate for this opportunity.
-
-Throughout my career, I have developed a robust skill set that aligns closely with what ${job.company} is seeking. I have consistently demonstrated the ability to deliver results in fast-paced, remote environments — a quality that is essential for this ${job.jobType} role.
-
-What particularly excites me about ${job.company} is the opportunity to contribute to a team that values innovation and excellence. I am drawn to remote work not just for its flexibility, but because it allows me to work with talented professionals across the globe and deliver my best work without geographical constraints.
-
-I am a highly motivated, detail-oriented professional with strong communication skills. I thrive when given ownership of projects and have a track record of exceeding expectations while working independently. I am proficient in the tools and technologies commonly used in remote settings, and I am always eager to learn and adapt.
-
-I would welcome the opportunity to discuss how my background and enthusiasm can contribute to ${job.company}'s continued success. I am available for an interview at your convenience and look forward to the possibility of joining your team.
-
-Thank you sincerely for considering my application.
-
-Warm regards,
-${name || 'Applicant'}`;
+  return `Dear Hiring Manager at ${job.company},\n\nI am writing to express my strong interest in the ${job.title} position at ${job.company}. Having reviewed the role requirements, I am confident that my skills and experience make me an excellent candidate for this opportunity.\n\nThroughout my career, I have developed a robust skill set that aligns closely with what ${job.company} is seeking. I have consistently demonstrated the ability to deliver results in fast-paced, remote environments — a quality that is essential for this ${job.jobType} role.\n\nWhat particularly excites me about ${job.company} is the opportunity to contribute to a team that values innovation and excellence. I am drawn to remote work not just for its flexibility, but because it allows me to work with talented professionals across the globe and deliver my best work without geographical constraints.\n\nI am a highly motivated, detail-oriented professional with strong communication skills. I thrive when given ownership of projects and have a track record of exceeding expectations while working independently. I am proficient in the tools and technologies commonly used in remote settings, and I am always eager to learn and adapt.\n\nI would welcome the opportunity to discuss how my background and enthusiasm can contribute to ${job.company}'s continued success. I am available for an interview at your convenience and look forward to the possibility of joining your team.\n\nThank you sincerely for considering my application.\n\nWarm regards,\n${name || 'Applicant'}`;
 }
 
 module.exports = router;
