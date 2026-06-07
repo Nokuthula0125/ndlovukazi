@@ -43,7 +43,7 @@ async function upsertJob(data) {
 // ── Remotive ──────────────────────────────────────────────
 async function fetchRemotive() {
   try {
-    const { data } = await axios.get('https://remotive.com/api/remote-jobs?limit=100', { timeout: 15000 });
+    const { data } = await axios.get('https://remotive.com/api/remote-jobs?limit=200', { timeout: 15000 });
     const jobs = data.jobs || [];
     let count = 0;
     for (const j of jobs) {
@@ -74,6 +74,11 @@ async function fetchRemotive() {
 const RSS_FEEDS = [
   { url: 'https://www.workingnomads.com/remote-jobs?format=rss', source: 'rss', name: 'Working Nomads' },
   { url: 'https://jobspresso.co/remote-work-rss/', source: 'rss', name: 'Jobspresso' },
+  { url: 'https://weworkremotely.com/remote-jobs.rss', source: 'rss', name: 'We Work Remotely' },
+  { url: 'https://weworkremotely.com/categories/remote-customer-support-jobs.rss', source: 'rss', name: 'WWR Customer Support' },
+  { url: 'https://weworkremotely.com/categories/remote-sales-and-marketing-jobs.rss', source: 'rss', name: 'WWR Sales & Marketing' },
+  { url: 'https://weworkremotely.com/categories/remote-back-end-programming-jobs.rss', source: 'rss', name: 'WWR Backend' },
+  { url: 'https://remoteok.com/remote-jobs.rss', source: 'rss', name: 'Remote OK' },
 ];
 
 async function fetchRSS(feed) {
@@ -83,7 +88,7 @@ async function fetchRSS(feed) {
     for (const item of (parsed.items || [])) {
       const title = item.title?.replace(/\[.*?\]/g, '').trim() || 'Untitled';
       const company = item.author || item['dc:creator'] || parsed.title || 'Unknown';
-      const location = item.categories?.[0] || 'Remote';
+      const location = item.categories?.[0] || 'Worldwide';
       await upsertJob({
         externalId: item.guid || item.link,
         title: title.slice(0, 255),
