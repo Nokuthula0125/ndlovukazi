@@ -1,14 +1,177 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useQuery } from '@tanstack/react-query'
-import { MapPin, Clock, Bookmark, ExternalLink, Sparkles, Flag, ArrowLeft } from 'lucide-react'
+import { MapPin, Clock, Bookmark, ExternalLink, Sparkles, Flag, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import api from '../lib/api'
 import { useAuthStore } from '../store/authStore'
 import CoverLetterModal from '../components/jobs/CoverLetterModal'
 import toast from 'react-hot-toast'
 
+// ── CV Match Checker Component ────────────────────────────
+function CVMatchChecker({ job }) {
+  const { user } = useAuthStore()
+  const [open, setOpen] = useState(false)
+  const [file, setFile] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState(null)
+  const fileRef = useRef(null)
+
+  const check = async () => {
+    if (!file) return toast.error('Please select your CV file first')
+    setLoading(true)
+    try {
+      const fd = new FormData()
+      fd.append('cv', file)
+      fd.append('jobId', job.id)
+      const { data } = await api.post('/cv/check-job', fd)
+      setResult(data)
+    } catch (e) {
+      toast.error(e.response?.data?.error || 'Failed to check CV')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const scoreColor = result
+    ? result.score >= 70 ? 'text-emerald-light' : result.score >= 40 ? 'text-gold' : 'text-red-400'
+    : 'text-white'
+
+  const scoreBg = result
+    ? result.score >= 70 ? 'bg-emerald/10 border-emerald/30' : result.score >= 40 ? 'bg-gold/10 border-gold/30' : 'bg-red-500/10 border-red-500/30'
+    : ''
+
+  return (
+    <div className="card mb-6 overflow-hidden">
+      {/* Header toggle */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between p-5 text-left hover:bg-white/[0.02] transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-emerald/15 border border-emerald/30 flex items-center justify-center text-base">🎯</div>
+          <div>
+            <div className="font-semibold text-white text-sm">Check if your CV matches this job</div>
+            <div className="text-xs text-white/40 mt-0.5">Get an ATS score specific to this role's requirements</div>
+          </div>
+        </div>
+        {open ? <ChevronUp size={16} className="text-white/30" /> : <ChevronDown size={16} className="text-white/30" />}
+      </button>
+
+      {/* Expanded content */}
+      {open && (
+        <div className="border-t border-white/[0.07] p-5">
+          {!user ? (
+            <div className="text-center py-4">
+              <p className="text-white/50 text-sm mb-3">Sign in to check your CV against this job</p>
+              <Link to="/login" className="btn-primary text-sm">Sign In</Link>
+            </div>
+          ) : !result ? (
+            <div className="space-y-4">
+              <p className="text-white/50 text-sm">
+                Upload your CV and we'll score it specifically against <strong className="text-white">{job.title}</strong> at <strong className="text-gold">{job.company}</strong> — not a generic score, but based on this job's actual requirements.
+              </p>
+              <div className="flex flex-wrap gap-3 items-center">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".pdf,.docx,.doc"
+                  onChange={e => setFile(e.target.files[0])}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="btn-secondary text-sm"
+                >
+                  📎 {file ? file.name : 'Choose CV (PDF or DOCX)'}
+                </button>
+                {file && (
+                  <button
+                    onClick={check}
+                    disabled={loading}
+                    className="btn-primary text-sm"
+                  >
+                    {loading ? '⏳ Analysing...' : '🎯 Check My CV'}
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-white/30">Your CV is analysed and immediately deleted. We never store your file.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Score */}
+              <div className={`rounded-xl border p-4 flex items-center gap-4 ${scoreBg}`}>
+                <div className={`text-4xl font-bold font-serif ${scoreColor}`}>{result.score}<span className="text-xl">/100</span></div>
+                <div>
+                  <div className="font-semibold text-white text-sm">{result.message}</div>
+                  <div className="text-xs text-white/40 mt-0.5">{result.foundKeywords?.length} of {result.totalKeywords} job keywords found in your CV</div>
+                </div>
+              </div>
+
+              {/* Score bar */}
+              <div className="w-full h-2 bg-white/[0.07] rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${result.score >= 70 ? 'bg-emerald' : result.score >= 40 ? 'bg-gold' : 'bg-red-400'}`}
+                  style={{ width: `${result.score}%` }}
+                />
+              </div>
+
+              {/* Found keywords */}
+              {result.foundKeywords?.length > 0 && (
+                <div>
+                  <div className="text-xs text-white/30 uppercase tracking-wide mb-2">✅ Matched keywords</div>
+                  <div className="flex flex-wrap gap-2">
+                    {result.foundKeywords.slice(0, 10).map(kw => (
+                      <span key={kw} className="text-xs bg-emerald/10 border border-emerald/20 text-emerald-light px-2.5 py-1 rounded-full">{kw}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Missing keywords */}
+              {result.missingKeywords?.length > 0 && (
+                <div>
+                  <div className="text-xs text-white/30 uppercase tracking-wide mb-2">❌ Missing keywords — add these to your CV</div>
+                  <div className="flex flex-wrap gap-2">
+                    {result.missingKeywords.map(kw => (
+                      <span key={kw} className="text-xs bg-red-500/10 border border-red-500/20 text-red-300 px-2.5 py-1 rounded-full">{kw}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Suggestions */}
+              {result.suggestions?.length > 0 && (
+                <div className="bg-white/[0.03] rounded-xl p-4 space-y-2">
+                  <div className="text-xs text-white/30 uppercase tracking-wide mb-3">💡 How to improve your score</div>
+                  {result.suggestions.map((s, i) => (
+                    <div key={i} className="flex gap-2 text-sm text-white/60">
+                      <span className="text-gold shrink-0 mt-0.5">→</span>{s}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex flex-wrap gap-3 pt-1">
+                <button onClick={() => { setResult(null); setFile(null) }} className="btn-ghost text-sm">
+                  Try with a different CV
+                </button>
+                <Link to="/cv-templates" className="btn-secondary text-sm">
+                  📄 Get a Better CV Template
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Main JobDetailPage ────────────────────────────────────
 export default function JobDetailPage() {
   const { id } = useParams()
   const { user } = useAuthStore()
@@ -44,15 +207,24 @@ export default function JobDetailPage() {
     finally { setFlagging(false) }
   }
 
-  if (isLoading) return <div className="max-w-4xl mx-auto px-4 py-20 animate-pulse"><div className="h-8 bg-white/[0.05] rounded mb-4 w-2/3" /><div className="h-96 bg-white/[0.03] rounded" /></div>
-  if (error || !job) return <div className="max-w-4xl mx-auto px-4 py-20 text-center"><p className="text-white/50">Job not found.</p><Link to="/jobs" className="btn-primary mt-6 inline-flex">← Back to Jobs</Link></div>
+  if (isLoading) return (
+    <div className="max-w-4xl mx-auto px-4 py-20 animate-pulse">
+      <div className="h-8 bg-white/[0.05] rounded mb-4 w-2/3" />
+      <div className="h-96 bg-white/[0.03] rounded" />
+    </div>
+  )
+  if (error || !job) return (
+    <div className="max-w-4xl mx-auto px-4 py-20 text-center">
+      <p className="text-white/50">Job not found.</p>
+      <Link to="/jobs" className="btn-primary mt-6 inline-flex">← Back to Jobs</Link>
+    </div>
+  )
 
   return (
     <>
       <Helmet>
         <title>{job.title} at {job.company} — Ndlovukazi</title>
         <meta name="description" content={`${job.title} at ${job.company}. ${job.location}. Apply on Ndlovukazi.`} />
-        {/* JobPosting schema.org */}
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
           "@type": "JobPosting",
@@ -95,7 +267,6 @@ export default function JobDetailPage() {
             {job.salary && <span className="text-emerald-light font-semibold font-serif">{job.salary}</span>}
           </div>
 
-          {/* Actions */}
           <div className="flex flex-wrap gap-3">
             {job.sourceUrl && (
               <a href={job.sourceUrl} target="_blank" rel="noopener noreferrer" onClick={trackApply}
@@ -119,6 +290,9 @@ export default function JobDetailPage() {
             </button>
           </div>
         </div>
+
+        {/* 🎯 CV Match Checker — sits right before job description */}
+        <CVMatchChecker job={job} />
 
         {/* Description */}
         <div className="card p-8">
