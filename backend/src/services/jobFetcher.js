@@ -4,18 +4,16 @@ const prisma = require('../utils/prisma');
 
 const rss = new RSSParser();
 
-const CATEGORIES = ['Administrative','HR','Operations','Retail','Customer Support','Virtual Assistant','Tech','Entry-Level'];
-
 function guessCategory(title = '', desc = '') {
   const text = `${title} ${desc}`.toLowerCase();
   if (/tech|developer|engineer|software|data|devops/.test(text)) return 'Tech';
-  if (/virtual assistant|va /.test(text)) return 'Virtual Assistant';
-  if (/customer|support|service/.test(text)) return 'Customer Support';
-  if (/hr|human resource|recruit|talent/.test(text)) return 'HR';
-  if (/admin|executive assistant|coordinator/.test(text)) return 'Administrative';
-  if (/operation|ops|logistics/.test(text)) return 'Operations';
-  if (/retail|sales|ecommerce|e-commerce/.test(text)) return 'Retail';
-  if (/entry|junior|graduate|intern/.test(text)) return 'Entry-Level';
+  if (/virtual assistant|va |executive assistant/.test(text)) return 'Virtual Assistant';
+  if (/customer|support|service|helpdesk/.test(text)) return 'Customer Support';
+  if (/hr|human resource|recruit|talent|people ops/.test(text)) return 'HR';
+  if (/admin|coordinator|office manager/.test(text)) return 'Administrative';
+  if (/operation|ops|logistics|supply chain/.test(text)) return 'Operations';
+  if (/retail|sales|ecommerce|e-commerce|account manager/.test(text)) return 'Retail';
+  if (/entry|junior|graduate|intern|trainee|no experience/.test(text)) return 'Entry-Level';
   return 'Administrative';
 }
 
@@ -72,13 +70,35 @@ async function fetchRemotive() {
 
 // ── RSS feeds ─────────────────────────────────────────────
 const RSS_FEEDS = [
+  // ── General worldwide remote ──
   { url: 'https://www.workingnomads.com/remote-jobs?format=rss', source: 'rss', name: 'Working Nomads' },
   { url: 'https://jobspresso.co/remote-work-rss/', source: 'rss', name: 'Jobspresso' },
+  { url: 'https://remote.co/remote-jobs/feed/', source: 'rss', name: 'Remote.co' },
+  { url: 'https://himalayas.app/jobs/rss', source: 'rss', name: 'Himalayas' },
+
+  // ── We Work Remotely by category ──
   { url: 'https://weworkremotely.com/remote-jobs.rss', source: 'rss', name: 'We Work Remotely' },
   { url: 'https://weworkremotely.com/categories/remote-customer-support-jobs.rss', source: 'rss', name: 'WWR Customer Support' },
   { url: 'https://weworkremotely.com/categories/remote-sales-and-marketing-jobs.rss', source: 'rss', name: 'WWR Sales & Marketing' },
   { url: 'https://weworkremotely.com/categories/remote-back-end-programming-jobs.rss', source: 'rss', name: 'WWR Backend' },
+  { url: 'https://weworkremotely.com/categories/remote-management-and-finance-jobs.rss', source: 'rss', name: 'WWR Management & Finance' },
+  { url: 'https://weworkremotely.com/categories/remote-all-other-remote-jobs.rss', source: 'rss', name: 'WWR Other Jobs' },
+
+  // ── Remote OK ──
   { url: 'https://remoteok.com/remote-jobs.rss', source: 'rss', name: 'Remote OK' },
+
+  // ── Virtual Assistant specific ──
+  { url: 'https://www.indeed.com/rss?q=virtual+assistant+remote&sort=date&fromage=3', source: 'indeed', name: 'Indeed VA Jobs' },
+  { url: 'https://www.indeed.com/rss?q=%22job+duck%22+OR+%22cherry+assistant%22+OR+%22somewhere%22+remote&sort=date', source: 'indeed', name: 'Indeed VA Companies' },
+
+  // ── Entry Level ──
+  { url: 'https://www.indeed.com/rss?q=entry+level+remote&sort=date&fromage=3', source: 'indeed', name: 'Indeed Entry Level' },
+  { url: 'https://www.indeed.com/rss?q=no+experience+remote+work&sort=date&fromage=3', source: 'indeed', name: 'Indeed No Experience' },
+
+  // ── South Africa & Africa ──
+  { url: 'https://za.indeed.com/rss?q=remote+work&l=South+Africa&sort=date&fromage=3', source: 'indeed', name: 'Indeed South Africa' },
+  { url: 'https://za.indeed.com/rss?q=virtual+assistant&l=South+Africa&sort=date', source: 'indeed', name: 'Indeed SA Virtual Assistant' },
+  { url: 'https://za.indeed.com/rss?q=remote+customer+service&l=South+Africa&sort=date', source: 'indeed', name: 'Indeed SA Customer Service' },
 ];
 
 async function fetchRSS(feed) {
