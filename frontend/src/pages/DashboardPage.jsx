@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Routes, Route, NavLink, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -82,6 +82,7 @@ function CVTool() {
   const [file, setFile] = useState(null)
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
+  const fileRef = useRef(null)
 
   const upload = async () => {
     if (!file) return
@@ -107,10 +108,20 @@ function CVTool() {
       {!result ? (
         <div className="card p-8 text-center">
           <div className="text-5xl mb-4">📄</div>
-          <label className="block mb-4">
-            <span className="btn-secondary cursor-pointer">Choose CV File</span>
-            <input type="file" accept=".pdf,.docx,.doc" onChange={e => setFile(e.target.files[0])} className="hidden" />
-          </label>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".pdf,.docx,.doc"
+            onChange={e => setFile(e.target.files[0])}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current && fileRef.current.click()}
+            className="btn-secondary cursor-pointer mb-4"
+          >
+            📎 Choose CV File (PDF or DOCX)
+          </button>
           {file && <p className="text-sm text-white/50 mb-4">{file.name}</p>}
           <button onClick={upload} disabled={!file || loading} className="btn-primary w-full justify-center">
             {loading ? 'Analysing...' : '🔍 Analyse My CV'}
@@ -279,3 +290,4 @@ export default function DashboardPage() {
     </>
   )
 }
+
