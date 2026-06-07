@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useQuery } from '@tanstack/react-query'
-import { Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import api from '../lib/api'
 import JobCard from '../components/jobs/JobCard'
 
@@ -22,6 +22,7 @@ export default function JobsPage() {
     region:   params.get('region')   || '',
     sort:     params.get('sort')     || 'newest',
     search:   params.get('search')   || '',
+    fresh:    params.get('fresh')    || '',
   }
 
   const set = (key, val) => {
@@ -63,12 +64,23 @@ export default function JobsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="input pl-11 text-base h-14"
-            placeholder="Search jobs, companies, skills..."
+            placeholder="Search jobs, companies, skills... e.g. Job Duck, Somewhere, Cherry Assistant"
           />
         </div>
 
         {/* Filters */}
         <div className="flex flex-wrap gap-2 mb-8">
+
+          {/* 48hr fresh filter */}
+          <button
+            onClick={() => set('fresh', q.fresh === 'true' ? '' : 'true')}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
+              q.fresh === 'true'
+                ? 'bg-gold border-gold text-black'
+                : 'border-white/10 text-white/50 hover:border-gold/40 hover:text-white'
+            }`}
+          >🆕 Last 48 hrs</button>
+
           {/* Category chips */}
           {CATEGORIES.map(c => (
             <button key={c} onClick={() => set('category', q.category === c ? '' : c)}
@@ -98,6 +110,18 @@ export default function JobsPage() {
           </select>
         </div>
 
+        {/* Active filters summary */}
+        {(q.category || q.fresh || q.region || q.jobType) && (
+          <div className="flex flex-wrap gap-2 mb-6 text-xs text-white/40">
+            <span>Filtering by:</span>
+            {q.fresh === 'true' && <span className="text-gold font-semibold">Last 48hrs</span>}
+            {q.category && <span className="text-emerald-light font-semibold">{q.category}</span>}
+            {q.region && <span className="text-white/60">{q.region}</span>}
+            {q.jobType && <span className="text-white/60">{q.jobType}</span>}
+            <button onClick={() => setParams(new URLSearchParams())} className="text-white/30 hover:text-white underline ml-2">Clear all</button>
+          </div>
+        )}
+
         {/* Grid */}
         {isLoading ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -108,6 +132,9 @@ export default function JobsPage() {
             <div className="text-5xl mb-4">🔍</div>
             <p className="text-lg font-medium mb-2">No jobs found</p>
             <p className="text-sm">Try adjusting your filters or search term</p>
+            {q.fresh === 'true' && (
+              <p className="text-sm mt-2 text-gold/60">Tip: The 48hr filter is very strict — try removing it to see more results</p>
+            )}
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -133,3 +160,4 @@ export default function JobsPage() {
     </>
   )
 }
+
