@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+  import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
 
@@ -21,6 +21,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import OAuthCallbackPage from './pages/OAuthCallbackPage'
 import DashboardPage from './pages/DashboardPage'
+import CVTemplatesPage from './pages/CVTemplatesPage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 import CookiesPage from './pages/CookiesPage'
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/jobs" element={<JobsPage />} />
         <Route path="/jobs/:id" element={<JobDetailPage />} />
+        <Route path="/cv-templates" element={<CVTemplatesPage />} />
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/:id" element={<ProjectDetailPage />} />
         <Route path="/blog" element={<BlogPage />} />
