@@ -29,8 +29,22 @@ function guessJobType(title = '', tags = '') {
 async function upsertJob(data) {
   try {
     await prisma.job.upsert({
-      where: { title_company_location: { title: data.title, company: data.company, location: data.location } },
-      update: { description: data.description, postedAt: new Date(), sourceUrl: data.sourceUrl, logo: data.logo, tags: data.tags, expired: false },
+      where: {
+        title_company_location: {
+          title: data.title,
+          company: data.company,
+          location: data.location,
+        },
+      },
+      // ✅ FIX: Do NOT update postedAt — keeps original post date so jobs
+      // don't reappear as "new" every time the fetcher runs
+      update: {
+        description: data.description,
+        sourceUrl: data.sourceUrl,
+        logo: data.logo,
+        tags: data.tags,
+        expired: false,
+      },
       create: data,
     });
   } catch (e) {
@@ -38,13 +52,15 @@ async function upsertJob(data) {
   }
 }
 
-// ── Remotive ──────────────────────────────────────────────
+// ── Remotive API ──────────────────────────────────────────
 async function fetchRemotive() {
   try {
-    const { data } = await axios.get('https://remotive.com/api/remote-jobs?limit=200', { timeout: 15000 });
-    const jobs = data.jobs || [];
+    const { data } = await axios.get(
+      'https://remotive.com/api/remote-jobs?limit=200',
+      { timeout: 15000 }
+    );
     let count = 0;
-    for (const j of jobs) {
+    for (const j of (data.jobs || [])) {
       await upsertJob({
         externalId: String(j.id),
         title: j.title?.slice(0, 255) || 'Untitled',
@@ -59,46 +75,64 @@ async function fetchRemotive() {
         logo: j.company_logo || null,
         tags: Array.isArray(j.tags) ? j.tags.join(',') : null,
         verified: true,
+        postedAt: new Date(),
       });
       count++;
     }
-    console.log(`[Remotive] Fetched/updated ${count} jobs`);
+    console.log(`[Remotive] ${count} jobs`);
   } catch (e) {
-    console.error('[Remotive] Fetch failed:', e.message);
+    console.error('[Remotive] Failed:', e.message);
   }
 }
 
 // ── RSS feeds ─────────────────────────────────────────────
 const RSS_FEEDS = [
-  // ── General worldwide remote ──
-  { url: 'https://www.workingnomads.com/remote-jobs?format=rss', source: 'rss', name: 'Working Nomads' },
-  { url: 'https://jobspresso.co/remote-work-rss/', source: 'rss', name: 'Jobspresso' },
-  { url: 'https://remote.co/remote-jobs/feed/', source: 'rss', name: 'Remote.co' },
-  { url: 'https://himalayas.app/jobs/rss', source: 'rss', name: 'Himalayas' },
 
-  // ── We Work Remotely by category ──
-  { url: 'https://weworkremotely.com/remote-jobs.rss', source: 'rss', name: 'We Work Remotely' },
-  { url: 'https://weworkremotely.com/categories/remote-customer-support-jobs.rss', source: 'rss', name: 'WWR Customer Support' },
-  { url: 'https://weworkremotely.com/categories/remote-sales-and-marketing-jobs.rss', source: 'rss', name: 'WWR Sales & Marketing' },
-  { url: 'https://weworkremotely.com/categories/remote-back-end-programming-jobs.rss', source: 'rss', name: 'WWR Backend' },
-  { url: 'https://weworkremotely.com/categories/remote-management-and-finance-jobs.rss', source: 'rss', name: 'WWR Management & Finance' },
-  { url: 'https://weworkremotely.com/categories/remote-all-other-remote-jobs.rss', source: 'rss', name: 'WWR Other Jobs' },
+  // ── General remote boards ──────────────────────────────
+  { url: 'https://www.workingnomads.com/remote-jobs?format=rss',   name: 'Working Nomads' },
+  { url: 'https://jobspresso.co/remote-work-rss/',                  name: 'Jobspresso' },
+  { url: 'https://remote.co/remote-jobs/feed/',                     name: 'Remote.co' },
+  { url: 'https://himalayas.app/jobs/rss',                          name: 'Himalayas' },
+  { url: 'https://remoteok.com/remote-jobs.rss',                    name: 'Remote OK' },
 
-  // ── Remote OK ──
-  { url: 'https://remoteok.com/remote-jobs.rss', source: 'rss', name: 'Remote OK' },
+  // ── We Work Remotely by category ──────────────────────
+  { url: 'https://weworkremotely.com/remote-jobs.rss',                                        name: 'WWR All Jobs' },
+  { url: 'https://weworkremotely.com/categories/remote-customer-support-jobs.rss',            name: 'WWR Customer Support' },
+  { url: 'https://weworkremotely.com/categories/remote-sales-and-marketing-jobs.rss',         name: 'WWR Sales & Marketing' },
+  { url: 'https://weworkremotely.com/categories/remote-back-end-programming-jobs.rss',        name: 'WWR Backend' },
+  { url: 'https://weworkremotely.com/categories/remote-management-and-finance-jobs.rss',      name: 'WWR Management & Finance' },
+  { url: 'https://weworkremotely.com/categories/remote-all-other-remote-jobs.rss',            name: 'WWR Other' },
 
-  // ── Virtual Assistant specific ──
-  { url: 'https://www.indeed.com/rss?q=virtual+assistant+remote&sort=date&fromage=3', source: 'indeed', name: 'Indeed VA Jobs' },
-  { url: 'https://www.indeed.com/rss?q=%22job+duck%22+OR+%22cherry+assistant%22+OR+%22somewhere%22+remote&sort=date', source: 'indeed', name: 'Indeed VA Companies' },
+  // ── Virtual Assistant & Entry Level ───────────────────
+  { url: 'https://www.indeed.com/rss?q=virtual+assistant+remote&sort=date&fromage=3',         name: 'Indeed VA Jobs' },
+  { url: 'https://www.indeed.com/rss?q=entry+level+remote&sort=date&fromage=3',               name: 'Indeed Entry Level' },
+  { url: 'https://www.indeed.com/rss?q=no+experience+remote+work&sort=date&fromage=3',        name: 'Indeed No Experience' },
 
-  // ── Entry Level ──
-  { url: 'https://www.indeed.com/rss?q=entry+level+remote&sort=date&fromage=3', source: 'indeed', name: 'Indeed Entry Level' },
-  { url: 'https://www.indeed.com/rss?q=no+experience+remote+work&sort=date&fromage=3', source: 'indeed', name: 'Indeed No Experience' },
+  // ── South Africa & Africa ─────────────────────────────
+  { url: 'https://za.indeed.com/rss?q=remote+work&l=South+Africa&sort=date&fromage=3',        name: 'Indeed South Africa' },
+  { url: 'https://za.indeed.com/rss?q=virtual+assistant&l=South+Africa&sort=date',            name: 'Indeed SA Virtual Assistant' },
+  { url: 'https://za.indeed.com/rss?q=remote+customer+service&l=South+Africa&sort=date',      name: 'Indeed SA Customer Service' },
 
-  // ── South Africa & Africa ──
-  { url: 'https://za.indeed.com/rss?q=remote+work&l=South+Africa&sort=date&fromage=3', source: 'indeed', name: 'Indeed South Africa' },
-  { url: 'https://za.indeed.com/rss?q=virtual+assistant&l=South+Africa&sort=date', source: 'indeed', name: 'Indeed SA Virtual Assistant' },
-  { url: 'https://za.indeed.com/rss?q=remote+customer+service&l=South+Africa&sort=date', source: 'indeed', name: 'Indeed SA Customer Service' },
+  // ── Specific companies — Somewhere & Job Duck ─────────
+  { url: 'https://www.indeed.com/rss?q=%22job+duck%22&sort=date&fromage=30',                  name: 'Job Duck' },
+  { url: 'https://www.indeed.com/rss?q=%22somewhere%22+virtual+assistant+remote&sort=date&fromage=14', name: 'Somewhere VA' },
+  { url: 'https://www.indeed.com/rss?q=site%3Asomewhere.com&sort=date',                       name: 'Somewhere Jobs' },
+
+  // ── Cherry Assistant ──────────────────────────────────
+  { url: 'https://www.indeed.com/rss?q=%22cherry+assistant%22&sort=date',                     name: 'Cherry Assistant' },
+  { url: 'https://www.indeed.com/rss?q=%22cherry+assistants%22+remote&sort=date',             name: 'Cherry Assistants' },
+
+  // ── Sagan Recruitment ─────────────────────────────────
+  { url: 'https://www.indeed.com/rss?q=%22sagan+recruitment%22&sort=date',                    name: 'Sagan Recruitment' },
+  { url: 'https://www.indeed.com/rss?q=%22sagan%22+remote+Africa&sort=date',                  name: 'Sagan Africa Remote' },
+
+  // ── Recruit My Mom (South Africa) ─────────────────────
+  { url: 'https://za.indeed.com/rss?q=%22recruit+my+mom%22&sort=date',                        name: 'Recruit My Mom' },
+  { url: 'https://www.indeed.com/rss?q=%22recruitmymom%22+OR+%22recruit+my+mom%22&sort=date', name: 'Recruit My Mom Global' },
+
+  // ── Hiresava ──────────────────────────────────────────
+  { url: 'https://www.indeed.com/rss?q=%22hiresava%22+OR+%22hire+sava%22+remote&sort=date',   name: 'Hiresava' },
+  { url: 'https://za.indeed.com/rss?q=%22hiresava%22&sort=date',                              name: 'Hiresava SA' },
 ];
 
 async function fetchRSS(feed) {
@@ -109,6 +143,7 @@ async function fetchRSS(feed) {
       const title = item.title?.replace(/\[.*?\]/g, '').trim() || 'Untitled';
       const company = item.author || item['dc:creator'] || parsed.title || 'Unknown';
       const location = item.categories?.[0] || 'Worldwide';
+
       await upsertJob({
         externalId: item.guid || item.link,
         title: title.slice(0, 255),
@@ -117,26 +152,29 @@ async function fetchRSS(feed) {
         salary: null,
         category: guessCategory(title, item.contentSnippet),
         jobType: 'Remote',
-        source: feed.source,
+        source: 'rss',
         sourceUrl: item.link,
         description: item.content || item.contentSnippet || item.summary || '',
         logo: null,
         tags: item.categories?.join(',') || null,
         verified: true,
+        postedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
       });
       count++;
     }
-    console.log(`[${feed.name}] Fetched/updated ${count} jobs`);
+    if (count > 0) console.log(`[${feed.name}] ${count} jobs`);
   } catch (e) {
-    console.error(`[${feed.name}] Fetch failed:`, e.message);
+    console.error(`[${feed.name}] Failed:`, e.message);
   }
 }
 
 async function fetchAllJobs() {
-  console.log('[JobFetcher] Starting job fetch...');
+  console.log('[JobFetcher] Starting...');
   await fetchRemotive();
-  for (const feed of RSS_FEEDS) await fetchRSS(feed);
-  console.log('[JobFetcher] Done.');
+  for (const feed of RSS_FEEDS) {
+    await fetchRSS(feed);
+  }
+  console.log('[JobFetcher] Complete.');
 }
 
 async function expireOldJobs() {
@@ -145,7 +183,7 @@ async function expireOldJobs() {
     where: { postedAt: { lt: thirtyDaysAgo }, expired: false },
     data: { expired: true },
   });
-  if (expired.count > 0) console.log(`[Expiry] Marked ${expired.count} jobs as expired`);
+  if (expired.count > 0) console.log(`[Expiry] Marked ${expired.count} jobs expired`);
 
   const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
   const deleted = await prisma.job.deleteMany({
