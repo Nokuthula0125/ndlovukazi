@@ -6,40 +6,67 @@
   html { scroll-behavior: smooth; }
   body {
     @apply bg-brand-black text-white font-sans antialiased;
+    background-color: #040D0C;
   }
-  h1,h2,h3 { @apply font-serif; }
+  h1, h2, h3 { @apply font-serif; }
 }
 
 @layer components {
+
+  /* ── Buttons ── */
   .btn-primary {
-    @apply bg-emerald text-white font-semibold px-6 py-3 rounded-lg
-           hover:bg-emerald-light transition-all duration-200
-           shadow-lg shadow-emerald/30 hover:shadow-emerald/50
+    @apply text-white font-semibold px-6 py-3 rounded-lg
+           transition-all duration-200 shadow-lg
            hover:-translate-y-0.5 inline-flex items-center gap-2;
+    background: linear-gradient(135deg, #0F766E, #14B8A6);
+    box-shadow: 0 4px 20px rgba(20, 184, 166, 0.3);
   }
+  .btn-primary:hover {
+    box-shadow: 0 6px 28px rgba(20, 184, 166, 0.45);
+    background: linear-gradient(135deg, #14B8A6, #2DD4BF);
+  }
+
   .btn-secondary {
-    @apply border border-gold/50 text-gold font-semibold px-6 py-3 rounded-lg
-           hover:bg-gold/10 hover:border-gold transition-all duration-200
+    @apply border text-gold font-semibold px-6 py-3 rounded-lg
+           hover:bg-gold/10 transition-all duration-200
            inline-flex items-center gap-2;
+    border-color: rgba(212, 175, 55, 0.45);
   }
+  .btn-secondary:hover {
+    border-color: rgba(212, 175, 55, 0.7);
+  }
+
   .btn-ghost {
     @apply text-white/70 font-medium px-4 py-2 rounded-lg
            hover:bg-white/5 hover:text-white transition-all duration-200
            inline-flex items-center gap-2;
   }
+
+  /* ── Cards ── */
   .card {
-    @apply bg-white/[0.04] border border-white/[0.08] rounded-2xl
-           hover:border-white/[0.15] hover:-translate-y-1
-           transition-all duration-300;
+    @apply rounded-2xl transition-all duration-300;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(20, 184, 166, 0.1);
   }
+  .card:hover {
+    border-color: rgba(20, 184, 166, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(20, 184, 166, 0.08);
+  }
+
   .card-sponsored {
-    @apply border-gold/40 shadow-[0_0_0_1px_rgba(212,175,55,0.15)];
+    border-color: rgba(212, 175, 55, 0.4);
+    box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.12);
   }
+
+  /* ── Badges ── */
   .badge {
     @apply text-[0.65rem] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full;
   }
   .badge-verified {
-    @apply bg-emerald/20 text-emerald-400 border border-emerald/40;
+    background: rgba(20, 184, 166, 0.15);
+    color: #2DD4BF;
+    border: 1px solid rgba(20, 184, 166, 0.35);
   }
   .badge-remote {
     @apply bg-blue-500/15 text-blue-300 border border-blue-500/30;
@@ -48,38 +75,72 @@
     @apply bg-gold/15 text-gold border border-gold/35;
   }
   .badge-new {
-    @apply bg-purple-500/15 text-purple-300 border border-purple-500/30;
+    background: rgba(74, 222, 128, 0.12);
+    color: #4ADE80;
+    border: 1px solid rgba(74, 222, 128, 0.3);
   }
+
+  /* ── Typography ── */
   .section-eyebrow {
     @apply text-[0.72rem] font-bold tracking-[0.15em] uppercase text-gold mb-4 block;
   }
   .section-title {
     @apply font-serif text-3xl md:text-4xl lg:text-5xl font-bold leading-tight;
   }
+
+  /* ── Ombre gradient text utility ── */
+  .text-ombre {
+    background: linear-gradient(135deg, #2DD4BF 0%, #4ADE80 50%, #D4AF37 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .text-teal-ombre {
+    background: linear-gradient(135deg, #14B8A6 0%, #2DD4BF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── Form inputs ── */
   .input {
-    @apply w-full bg-white/[0.05] border border-white/10 rounded-xl px-4 py-3
-           text-white placeholder:text-white/30 focus:outline-none focus:border-emerald/60
-           focus:bg-white/[0.07] transition-all duration-200;
+    @apply w-full border rounded-xl px-4 py-3
+           text-white placeholder:text-white/30 focus:outline-none
+           transition-all duration-200;
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+  .input:focus {
+    background: rgba(20, 184, 166, 0.05);
+    border-color: rgba(20, 184, 166, 0.5);
+    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.08);
   }
   .label {
     @apply block text-sm font-medium text-white/70 mb-1.5;
   }
+
+  /* ── Nav ── */
   .nav-link {
-    @apply text-white/70 hover:text-gold text-sm font-medium transition-colors duration-200;
+    @apply text-white/70 text-sm font-medium transition-colors duration-200;
   }
+  .nav-link:hover { color: #2DD4BF; }
+
+  /* ── Misc ── */
   .scam-banner {
-    @apply bg-red-900/80 text-white text-xs font-medium text-center py-2.5 px-4
-           border-b border-red-800 tracking-wide;
+    @apply text-white text-xs font-medium text-center py-2.5 px-4
+           border-b tracking-wide;
+    background: rgba(127, 29, 29, 0.85);
+    border-color: rgba(185, 28, 28, 0.5);
   }
 }
 
-/* Scrollbar */
+/* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #111; }
-::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #046A38; }
+::-webkit-scrollbar-track { background: #040D0C; }
+::-webkit-scrollbar-thumb { background: #0F766E; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #14B8A6; }
 
-/* Gold shimmer on sponsored */
+/* ── Gold shimmer ── */
 .shimmer {
   background: linear-gradient(90deg, transparent, rgba(212,175,55,0.08), transparent);
   background-size: 200%;
@@ -88,4 +149,19 @@
 @keyframes shimmer {
   from { background-position: 200% center; }
   to   { background-position: -200% center; }
+}
+
+/* ── Teal glow pulse (for hero/stats) ── */
+.teal-glow {
+  box-shadow: 0 0 40px rgba(20, 184, 166, 0.15);
+}
+.teal-glow-sm {
+  box-shadow: 0 0 16px rgba(20, 184, 166, 0.2);
+}
+
+/* ── Hero background gradient ── */
+.hero-bg {
+  background: radial-gradient(ellipse at 50% -10%, rgba(20, 184, 166, 0.18) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 60%, rgba(74, 222, 128, 0.06) 0%, transparent 50%),
+              #040D0C;
 }
